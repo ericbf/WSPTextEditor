@@ -4,7 +4,6 @@
 package gui;
 
 import java.awt.BorderLayout;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FileDialog;
 import java.awt.Toolkit;
@@ -17,7 +16,6 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.concurrent.CancellationException;
 
 import javax.swing.JFrame;
@@ -27,25 +25,27 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JTabbedPane;
 import javax.swing.KeyStroke;
+import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.JTextComponent;
 
 import process.Bonus;
+import process.CloseCancelledException;
 
 /**
  * @author eric
  */
 public class MainWindow extends JFrame {
-	private static final long					serialVersionUID	= 1L;
-	public static ArrayList<MainWindow>			openWindows			= new ArrayList<>();
-	public static HashMap<Component, String>	saved				= new HashMap<>();
+	private static final long			serialVersionUID	= 1L;
+	public static ArrayList<MainWindow>	openWindows			= new ArrayList<>();
 	
-	private JTabbedPane							tabs;
-	private ArrayList<JMenuItem>				toDeactivate;
+	private TabbedPane					tabs;
+	private ArrayList<JMenuItem>		toDeactivate;
 	
-	String										filename;
+	String								filename;
 	
 	public MainWindow() {
 		this(true);
@@ -56,6 +56,8 @@ public class MainWindow extends JFrame {
 	private MainWindow(boolean internal) {
 		super("Eric's TextEdit");
 		MainWindow.openWindows.add(this);
+		this.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+		
 		this.toDeactivate = new ArrayList<>();
 		
 		this.addWindowListener(new WindowListener() {
@@ -67,10 +69,16 @@ public class MainWindow extends JFrame {
 			
 			@Override
 			public void windowClosing(WindowEvent e) {
-				MainWindow.openWindows.remove(MainWindow.this);
-				if (MainWindow.openWindows.isEmpty()) {
-					System.exit(0);
-				}
+				try {
+					while (MainWindow.this.tabs.getTabCount() > 0) {
+						MainWindow.this.tabs.setSelectedIndex(0);
+						MainWindow.this.tabs.removeTabAt(0);
+					}
+					MainWindow.openWindows.remove(MainWindow.this);
+					if (MainWindow.openWindows.isEmpty()) {
+						System.exit(0);
+					}
+				} catch (CloseCancelledException cce) {}
 			}
 			
 			@Override
@@ -102,7 +110,7 @@ public class MainWindow extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				MainWindow newWindow = new MainWindow(MainWindow.this);
-				new Tab(newWindow.getTabbedPane()).add();
+				new Tab(newWindow.tabs).add();
 				newWindow.setVisible(true);
 			}
 		});
@@ -126,7 +134,7 @@ public class MainWindow extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				MainWindow theNew = new MainWindow(MainWindow.this);
-				new Tab(theNew.getTabbedPane())
+				new Tab(theNew.tabs)
 						.setComponent(MainWindow.this.loadFileIntoComponent())
 						.setTitle(MainWindow.this.filename).add();
 				theNew.setVisible(true);
@@ -191,7 +199,9 @@ public class MainWindow extends JFrame {
 				JTabbedPane tabs = MainWindow.this.getTabbedPane();
 				int selected = tabs.getSelectedIndex();
 				if (selected != -1) {
-					tabs.remove(selected);
+					try {
+						tabs.remove(selected);
+					} catch (CloseCancelledException cce) {}
 				}
 			}
 		});
@@ -203,7 +213,11 @@ public class MainWindow extends JFrame {
 		item.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				// TODO: Implement save
+				try {
+					MainWindow.this.tabs.save(MainWindow.this.tabs
+							.getSelectedIndex(), !MainWindow.this.tabs
+							.isSaved(MainWindow.this.tabs.getSelectedIndex()));
+				} catch (CloseCancelledException cce) {}
 			}
 		});
 		menu.add(item);
@@ -215,7 +229,10 @@ public class MainWindow extends JFrame {
 		item.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				// TODO: Implement save as
+				try {
+					MainWindow.this.tabs.save(
+							MainWindow.this.tabs.getSelectedIndex(), true);
+				} catch (CloseCancelledException cce) {}
 			}
 		});
 		menu.add(item);
@@ -233,7 +250,7 @@ public class MainWindow extends JFrame {
 		
 		this.add(menus, BorderLayout.NORTH);
 		
-		this.tabs = new JTabbedPane();
+		this.tabs = new TabbedPane();
 		this.tabs.setBorder(new EmptyBorder(5, 5, 5, 5));
 		// Set the window name to the name of the current file
 		this.tabs.addChangeListener(new ChangeListener() {
@@ -273,7 +290,7 @@ public class MainWindow extends JFrame {
 		return this.tabs;
 	}
 	
-	public Component loadFileIntoComponent() { // TODO: work on rtf support
+	public JTextComponent loadFileIntoComponent() { // TODO: work on rtf support
 		FileDialog d = new FileDialog(MainWindow.this);
 		d.setFilenameFilter(new FilenameFilter() {
 			

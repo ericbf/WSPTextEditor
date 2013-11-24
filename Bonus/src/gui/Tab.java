@@ -15,11 +15,13 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextPane;
 import javax.swing.border.BevelBorder;
 import javax.swing.border.EmptyBorder;
+import javax.swing.text.JTextComponent;
+
+import process.CloseCancelledException;
 
 /**
  * @author eric
@@ -32,9 +34,10 @@ public class Tab {
 	 * 
 	 * @author eric
 	 */
-	private static class ClosableTabHeader extends JPanel {
+	static class ClosableTabHeader extends JPanel {
 		private static final long	serialVersionUID	= 1L;
-		JLabel						title;
+		private JLabel				title;
+		private JTextComponent		component;
 		
 		/**
 		 * @param tabbedPane
@@ -82,7 +85,9 @@ public class Tab {
 				public void actionPerformed(ActionEvent e) {
 					int i = parent.indexOfTabComponent(ClosableTabHeader.this);
 					if (i != -1) {
-						parent.remove(i);
+						try {
+							parent.remove(i);
+						} catch (CloseCancelledException cce) {}
 					}
 				}
 			});
@@ -116,6 +121,14 @@ public class Tab {
 			});
 		}
 		
+		public JTextComponent getComponent() {
+			return this.component;
+		}
+		
+		public void setComponent(JTextComponent comp) {
+			this.component = comp;
+		}
+		
 		public void setTitle(String title) {
 			this.title.setText(title);
 		}
@@ -142,9 +155,9 @@ public class Tab {
 		}
 	}
 	
-	private JTabbedPane			tabbedPane;
+	private TabbedPane			tabbedPane;
 	private String				title;
-	private Component			component;
+	private JTextComponent		textComponent;
 	private ClosableTabHeader	header;
 	
 	private int					index;
@@ -162,7 +175,7 @@ public class Tab {
 	 *            changed after its setting in the constructor, and it cannot be
 	 *            null.
 	 */
-	public Tab(JTabbedPane tabbedPane) {
+	public Tab(TabbedPane tabbedPane) {
 		if (tabbedPane == null) {
 			throw new NullPointerException(
 					"Can't create tab for null JTabbedPane!!!");
@@ -170,7 +183,7 @@ public class Tab {
 		
 		this.tabbedPane = tabbedPane;
 		this.title = null;
-		this.component = null;
+		this.textComponent = null;
 		this.index = -1;
 		this.closable = true;
 		this.added = false;
@@ -190,31 +203,33 @@ public class Tab {
 		if (this.index == -1) {
 			this.index = this.tabbedPane.getTabCount();
 		}
-		if (this.component == null) {
-			this.component = new JScrollPane(new JTextPane());
+		if (this.textComponent == null) {
+			this.textComponent = new JTextPane();
 		}
 		
-		JPanel componentHolder = new JPanel(new GridBagLayout());
-		componentHolder.setOpaque(false);
-		GridBagConstraints c = new GridBagConstraints();
-		c.insets = new Insets(0, 3, 3, 4);
-		c.fill = GridBagConstraints.BOTH;
-		c.weightx = 1;
-		c.weighty = 1;
-		componentHolder.add(this.component, c);
-		
-		this.tabbedPane.insertTab(this.title, null, componentHolder, null,
-				this.index);
 		if (this.closable) {
-			this.tabbedPane.setTabComponentAt(this.index,
+			this.tabbedPane.addTab(this.title,
 					this.header = new ClosableTabHeader(this.tabbedPane,
-							this.title));
+							this.title), this.textComponent, this.index);
+		} else {
+			JPanel componentHolder = new JPanel(new GridBagLayout());
+			componentHolder.setOpaque(false);
+			GridBagConstraints c = new GridBagConstraints();
+			c.insets = new Insets(0, 3, 3, 4);
+			c.fill = GridBagConstraints.BOTH;
+			c.weightx = 1;
+			c.weighty = 1;
+			componentHolder.add(this.textComponent, c);
+			
+			this.tabbedPane.insertTab(this.title, null, componentHolder, null,
+					this.index);
 		}
 		this.tabbedPane.setSelectedIndex(this.index);
+		this.header.getComponent().requestFocusInWindow();
 	}
 	
 	public Component getComponent() {
-		return this.component;
+		return this.textComponent;
 	}
 	
 	public String getTitle() {
@@ -242,8 +257,8 @@ public class Tab {
 	 * @param component
 	 * @return
 	 */
-	public Tab setComponent(Component component) {
-		this.component = component;
+	public Tab setComponent(JTextComponent component) {
+		this.textComponent = component;
 		return this;
 	}
 	
