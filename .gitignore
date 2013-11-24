@@ -1,0 +1,24 @@
+#Mac OS X Files
+[Tt]humbs.db
+*.DS_Store
+
+.idea
+
+/bin
+build.xml
+
+#Eclipse Files
+.project
+.classpath
+.externalToolBuilders/
+
+#Compiled Java files
+*.class
+
+#Packaged project files
+*.jar
+*.war
+*.ear
+
+#Include libraries and et cetera
+!sqlite-jdbc-3.7.15-M1.jar
