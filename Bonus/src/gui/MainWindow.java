@@ -78,6 +78,7 @@ public class MainWindow extends JFrame {
 					if (MainWindow.openWindows.isEmpty()) {
 						System.exit(0);
 					}
+					MainWindow.this.dispose();
 				} catch (CloseCancelledException cce) {}
 			}
 			
